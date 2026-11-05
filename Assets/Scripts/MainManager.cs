@@ -3,10 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
-
+using TMPro;
 
 public class MainManager : MonoBehaviour
 {
@@ -15,15 +12,13 @@ public class MainManager : MonoBehaviour
     public Rigidbody Ball;
 
     public Text ScoreText;
+    public TextMeshProUGUI BestScoreText; // <- Arrastra aquí el objeto "BestScoreText" del Canvas
     public GameObject GameOverText;
     
     private bool m_Started = false;
     private int m_Points;
-    
     private bool m_GameOver = false;
 
-    
-    // Start is called before the first frame update
     void Start()
     {
         const float step = 0.6f;
@@ -40,6 +35,11 @@ public class MainManager : MonoBehaviour
                 brick.onDestroyed.AddListener(AddPoint);
             }
         }
+
+        // Mostrar el nombre del jugador actual junto al puntaje inicial (0)
+        UpdateScoreUI();
+        // Mostrar el mayor puntaje guardado al iniciar la partida
+        UpdateBestScoreUI();
     }
 
     private void Update()
@@ -69,28 +69,40 @@ public class MainManager : MonoBehaviour
     void AddPoint(int point)
     {
         m_Points += point;
-        ScoreText.text = $"Score : {m_Points}";
+        UpdateScoreUI();
+
+        // Si mientras juega supera el mayor puntaje, actualizamos el récord en pantalla
+        if (DataManager.Instance != null && m_Points > DataManager.Instance.m_BestPlayerScore)
+        {
+            DataManager.Instance.m_BestPlayerScore = m_Points;
+            DataManager.Instance.m_BestPlayerName = DataManager.Instance.m_PlayerName;
+            UpdateBestScoreUI();
+        }
     }
 
     public void GameOver()
     {
         m_GameOver = true;
         GameOverText.SetActive(true);
+
+        // Guardamos en disco (JSON) al terminar la partida
+        if (DataManager.Instance != null)
+        {
+            DataManager.Instance.SaveDataGame();
+        }
     }
 
-
-
-    public void StartGame()
+    void UpdateScoreUI()
     {
-        SceneManager.LoadScene(1);
+        string currentName = (DataManager.Instance != null) ? DataManager.Instance.m_PlayerName : "Player";
+        ScoreText.text = $"Score ({currentName}) : {m_Points}";
     }
 
-    public void ExitGame()
+    void UpdateBestScoreUI()
     {
-#if UNITY_EDITOR
-        EditorApplication.ExitPlaymode();
-#else
-        Application.Quit();
-#endif
+        if (DataManager.Instance != null && BestScoreText != null)
+        {
+            BestScoreText.text = $"Best Score : {DataManager.Instance.m_BestPlayerName} : {DataManager.Instance.m_BestPlayerScore}";
+        }
     }
 }
